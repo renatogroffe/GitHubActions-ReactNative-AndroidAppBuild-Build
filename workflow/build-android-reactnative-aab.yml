@@ -1,0 +1,64 @@
+name: build-android-reactnative
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+  
+env:
+  DIR_MOBILEAPP: './src/AppGroffe'
+  DIR_AAB_FILE: 'android/app/build/outputs/bundle/release'
+  ARTIFACT_AAB_FILE: 'aab-appgroffe'
+
+jobs:
+  build-android:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Exibir a versao atual do macOS
+        run: sw_vers -productVersion
+      
+      - name: Configurar uso do Java 17
+        uses: actions/setup-java@v4.3.0
+        with:
+          java-version: 17
+          distribution: adopt
+
+      - name: Instalar dependencias via npm install
+        run: |
+          cd ${{ env.DIR_MOBILEAPP }}
+          npm install
+
+      - name: Tornar o gradlew executavel (permissao)
+        run: |
+          cd ${{ env.DIR_MOBILEAPP }}
+          cd android
+          chmod +x ./gradlew
+
+      - name: Build do App Android no formato AAB com Gradle
+        run: |
+          cd ${{ env.DIR_MOBILEAPP }}
+          cd android
+          ./gradlew bundleRelease
+        env:
+          JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
+
+      - name: Listar AAB gerado
+        run: |
+          cd ${{ env.DIR_MOBILEAPP }}
+          cd ${{ env.DIR_AAB_FILE }}
+          echo 'Diretório com o resultado do build:'
+          pwd
+          echo ''
+          echo 'Arquivos gerados:'
+          ls
+            
+      - name: Publicar AAB como Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_AAB_FILE }}
+          path: ${{ env.DIR_MOBILEAPP }}/${{ env.DIR_AAB_FILE }}/app-release.aab
